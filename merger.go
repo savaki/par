@@ -13,38 +13,38 @@ type RequestFunc func(ctx context.Context) error
 
 type Merger interface {
 	WithRedundancy(redundancy int) Merger
-	WithConcurrent(concurrent int) Merger
+	WithConcurrency(concurrency int) Merger
 	Merge() error
 	MergeWithContext(ctx context.Context) error
 }
 
 type merger struct {
-	requests   chan RequestFunc
-	redundancy int
-	concurrent int
+	requests    chan RequestFunc
+	redundancy  int
+	concurrency int
 }
 
 func Requests(requests chan RequestFunc) Merger {
 	return &merger{
-		requests:   requests,
-		redundancy: 1,
-		concurrent: 0,
+		requests:    requests,
+		redundancy:  1,
+		concurrency: 0,
 	}
 }
 
 func (m *merger) WithRedundancy(redundancy int) Merger {
 	return &merger{
-		requests:   m.requests,
-		redundancy: redundancy,
-		concurrent: m.concurrent,
+		requests:    m.requests,
+		redundancy:  redundancy,
+		concurrency: m.concurrency,
 	}
 }
 
-func (m *merger) WithConcurrent(concurrent int) Merger {
+func (m *merger) WithConcurrency(concurrency int) Merger {
 	return &merger{
-		requests:   m.requests,
-		redundancy: m.redundancy,
-		concurrent: concurrent,
+		requests:    m.requests,
+		redundancy:  m.redundancy,
+		concurrency: concurrency,
 	}
 }
 
@@ -76,7 +76,7 @@ func (m merger) enqueue(ctx context.Context, responses chan *response, done chan
 	// level of concurrency
 	go func() {
 		// create a channel to simulate both a bounded and unbounded pool
-		pool := makePoolChan(m.concurrent)
+		pool := makePoolChan(m.concurrency)
 		defer close(pool)
 
 		for attempt := 1; attempt <= m.redundancy; attempt++ {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 )
 
 var debug = Debug("merge_test")
@@ -56,11 +57,13 @@ func TestMerger(t *testing.T) {
 	close(requests)
 
 	// When
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	merger := merge.
 		Requests(requests).
 		WithRedundancy(redundancy).
-		WithConcurrent(3)
-	err := merger.Merge()
+		WithConcurrency(3)
+	err := merger.MergeWithContext(ctx)
 
 	// Then - I expect success
 	if err != nil {
