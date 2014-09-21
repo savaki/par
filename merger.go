@@ -13,14 +13,13 @@ type RequestFunc func(ctx context.Context) error
 
 type Merger interface {
 	WithRedundancy(redundancy int) Merger
-	WithContext(ctx context.Context) Merger
 	WithConcurrent(concurrent int) Merger
 	Merge() error
+	MergeWithContext(ctx context.Context) error
 }
 
 type merger struct {
 	requests   chan RequestFunc
-	ctx        context.Context
 	redundancy int
 	concurrent int
 }
@@ -28,7 +27,6 @@ type merger struct {
 func Requests(requests chan RequestFunc) Merger {
 	return &merger{
 		requests:   requests,
-		ctx:        context.Background(),
 		redundancy: 1,
 		concurrent: 0,
 	}
@@ -37,17 +35,7 @@ func Requests(requests chan RequestFunc) Merger {
 func (m *merger) WithRedundancy(redundancy int) Merger {
 	return &merger{
 		requests:   m.requests,
-		ctx:        m.ctx,
 		redundancy: redundancy,
-		concurrent: m.concurrent,
-	}
-}
-
-func (m *merger) WithContext(ctx context.Context) Merger {
-	return &merger{
-		requests:   m.requests,
-		ctx:        ctx,
-		redundancy: m.redundancy,
 		concurrent: m.concurrent,
 	}
 }
@@ -55,7 +43,6 @@ func (m *merger) WithContext(ctx context.Context) Merger {
 func (m *merger) WithConcurrent(concurrent int) Merger {
 	return &merger{
 		requests:   m.requests,
-		ctx:        m.ctx,
 		redundancy: m.redundancy,
 		concurrent: concurrent,
 	}
@@ -66,13 +53,13 @@ type response struct {
 	err error
 }
 
-func (m merger) enqueue(responses chan *response, done chan interface{}) int {
+func (m merger) enqueue(ctx context.Context, responses chan *response, done chan interface{}) int {
 	// helper method to execute request and toss response into responses channel
 	handle := func(id int, request RequestFunc, pool <-chan interface{}) {
 		defer func() { <-pool }()
 		i := id
 		debug(fmt.Sprintf("request: %d", i))
-		err := request(m.ctx)
+		err := request(ctx)
 		responses <- &response{
 			id:  i,
 			err: err,
@@ -108,6 +95,13 @@ func (m merger) enqueue(responses chan *response, done chan interface{}) int {
 }
 
 func (m merger) Merge() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	return m.MergeWithContext(ctx)
+}
+
+func (m merger) MergeWithContext(ctx context.Context) error {
 	// internal communication channel
 	responses := make(chan *response)
 
@@ -117,7 +111,7 @@ func (m merger) Merge() error {
 
 	// create a marker channel to let us know once we have pushed all the requests
 	// onto the queue
-	expected := m.enqueue(responses, done)
+	expected := m.enqueue(ctx, responses, done)
 
 	// collect the results and return when finished
 	results := map[int]int{}
@@ -128,7 +122,7 @@ func (m merger) Merge() error {
 				results[response.id] = response.id
 				debug(fmt.Sprintf("received - %d", response.id))
 			}
-		case <-m.ctx.Done():
+		case <-ctx.Done():
 			debug("timeout")
 			return errors.New("must have timed out")
 		}
