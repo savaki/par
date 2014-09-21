@@ -107,7 +107,7 @@ func (m merger) MergeWithContext(ctx context.Context) error {
 
 	// signal to indicate we're done
 	done := make(chan interface{})
-	defer func() { done <- true }()
+	defer close(done)
 
 	// create a marker channel to let us know once we have pushed all the requests
 	// onto the queue
