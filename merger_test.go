@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"testing"
-	"time"
 )
 
 var debug = Debug("merge_test")
@@ -40,7 +39,7 @@ func FindWeather(city string, results chan weather) merge.RequestFunc {
 
 func TestMerger(t *testing.T) {
 	// Given a channel of requests
-	parallelism := 2
+	redundancy := 2
 	cities := []string{
 		"San Francisco",
 		"Oakland",
@@ -50,15 +49,14 @@ func TestMerger(t *testing.T) {
 	}
 
 	requests := make(chan merge.RequestFunc, len(cities))
-	results := make(chan weather, len(cities)*parallelism) // buffer for clarity of example
+	results := make(chan weather, len(cities)*redundancy) // buffer for clarity of example
 	for _, city := range cities {
 		requests <- FindWeather(city, results)
 	}
 	close(requests)
 
 	// When
-	timeout := 1 * time.Minute
-	merger := merge.Requests(requests, timeout).WithParallelism(parallelism)
+	merger := merge.Requests(requests).WithRedundancy(redundancy)
 	err := merger.Merge()
 
 	// Then - I expect success

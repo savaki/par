@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/visionmedia/go-debug"
-	"time"
 )
 
 var debug = Debug("merge")
@@ -13,29 +12,37 @@ var debug = Debug("merge")
 type RequestFunc func(ctx context.Context) error
 
 type Merger interface {
-	WithParallelism(parallelism int) Merger
+	WithRedundancy(redundancy int) Merger
 	Merge() error
 }
 
 type merger struct {
-	requests    chan RequestFunc
-	timeout     time.Duration
-	parallelism int
+	requests   chan RequestFunc
+	ctx        context.Context
+	redundancy int
 }
 
-func Requests(requests chan RequestFunc, timeout time.Duration) Merger {
+func Requests(requests chan RequestFunc) Merger {
 	return &merger{
-		requests:    requests,
-		timeout:     timeout,
-		parallelism: 1,
+		requests:   requests,
+		ctx:        context.Background(),
+		redundancy: 1,
 	}
 }
 
-func (m merger) WithParallelism(parallelism int) Merger {
+func (m merger) WithRedundancy(redundancy int) Merger {
 	return &merger{
-		requests:    m.requests,
-		timeout:     m.timeout,
-		parallelism: parallelism,
+		requests:   m.requests,
+		ctx:        m.ctx,
+		redundancy: redundancy,
+	}
+}
+
+func (m merger) WithContext(ctx context.Context) Merger {
+	return &merger{
+		requests:   m.requests,
+		ctx:        ctx,
+		redundancy: m.redundancy,
 	}
 }
 
@@ -45,10 +52,6 @@ type response struct {
 }
 
 func (m merger) Merge() error {
-	// cancel all things that we're done with
-	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-	defer cancel()
-
 	// internal communication channel
 	responses := make(chan response)
 
@@ -56,18 +59,18 @@ func (m merger) Merge() error {
 	handle := func(id int, request RequestFunc) {
 		i := id
 		debug(fmt.Sprintf("request: %d", i))
-		err := request(ctx)
+		err := request(m.ctx)
 		responses <- response{
 			id:  i,
 			err: err,
 		}
 	}
 
-	// perform each request with two parallel calls
+	// perform each request with two redundant calls
 	id := 0
 	for request := range m.requests {
 		id = id + 1
-		for agent := 0; agent < m.parallelism; agent++ {
+		for agent := 0; agent < m.redundancy; agent++ {
 			go handle(id, request)
 		}
 	}
@@ -81,7 +84,7 @@ func (m merger) Merge() error {
 				results[result.id] = result.id
 				debug(fmt.Sprintf("received - %d", result.id))
 			}
-		case <-ctx.Done():
+		case <-m.ctx.Done():
 			debug("timeout")
 			return errors.New("must have timed out")
 		}
