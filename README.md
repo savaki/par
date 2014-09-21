@@ -217,3 +217,11 @@ In the results, you can see we're making multiple calls for each of our cities, 
 22:12:41.466 2ms    2ms    openweathermap - http - ok
 22:12:41.470 13ms   13ms   merge - timeout
 ```
+
+## Debugging output
+
+To see the debug output for yourself, execute the following in your shell:
+
+```
+export DEBUG=\*
+```
