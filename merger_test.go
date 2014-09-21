@@ -22,7 +22,7 @@ func FindWeather(city string, results chan weather) merge.RequestFunc {
 	_city := city
 	return func(ctx context.Context) error {
 		request, _ := http.NewRequest("GET", "http://api.openweathermap.org/data/2.5/weather?q="+_city, nil)
-		return httpDo(ctx, request, func(response *http.Response, err error) error {
+		return merge.Do(ctx, request, func(response *http.Response, err error) error {
 			if err != nil {
 				return err
 			}
