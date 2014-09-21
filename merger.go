@@ -1,4 +1,4 @@
-package merge
+package par
 
 import (
 	"code.google.com/p/go.net/context"
@@ -7,7 +7,7 @@ import (
 	. "github.com/visionmedia/go-debug"
 )
 
-var debug = Debug("merge")
+var debug = Debug("par")
 
 type RequestFunc func(ctx context.Context) error
 
@@ -18,30 +18,30 @@ type Merger interface {
 	MergeWithContext(ctx context.Context) error
 }
 
-type merger struct {
+type parr struct {
 	requests    chan RequestFunc
 	redundancy  int
 	concurrency int
 }
 
 func Requests(requests chan RequestFunc) Merger {
-	return &merger{
+	return &parr{
 		requests:    requests,
 		redundancy:  1,
 		concurrency: 0,
 	}
 }
 
-func (m *merger) WithRedundancy(redundancy int) Merger {
-	return &merger{
+func (m *parr) WithRedundancy(redundancy int) Merger {
+	return &parr{
 		requests:    m.requests,
 		redundancy:  redundancy,
 		concurrency: m.concurrency,
 	}
 }
 
-func (m *merger) WithConcurrency(concurrency int) Merger {
-	return &merger{
+func (m *parr) WithConcurrency(concurrency int) Merger {
+	return &parr{
 		requests:    m.requests,
 		redundancy:  m.redundancy,
 		concurrency: concurrency,
@@ -53,7 +53,7 @@ type response struct {
 	err error
 }
 
-func (m merger) enqueue(ctx context.Context, responses chan *response, done chan interface{}) int {
+func (m parr) enqueue(ctx context.Context, responses chan *response, done chan interface{}) int {
 	// helper method to execute request and toss response into responses channel
 	handle := func(id int, request RequestFunc, pool <-chan interface{}) {
 		defer func() { <-pool }()
@@ -94,14 +94,14 @@ func (m merger) enqueue(ctx context.Context, responses chan *response, done chan
 	return len(requests)
 }
 
-func (m merger) Merge() error {
+func (m parr) Merge() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	return m.MergeWithContext(ctx)
 }
 
-func (m merger) MergeWithContext(ctx context.Context) error {
+func (m parr) MergeWithContext(ctx context.Context) error {
 	// internal communication channel
 	responses := make(chan *response)
 

@@ -1,4 +1,4 @@
-package merge
+package par
 
 func makePoolChan(concurrent int) chan interface{} {
 	var ch chan interface{}

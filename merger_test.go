@@ -1,9 +1,9 @@
-package merge_test
+package par_test
 
 import (
 	"bytes"
 	"code.google.com/p/go.net/context"
-	"github.com/savaki/merge"
+	"github.com/savaki/par"
 	. "github.com/visionmedia/go-debug"
 	"io"
 	"net/http"
@@ -11,18 +11,18 @@ import (
 	"time"
 )
 
-var debug = Debug("merge_test")
+var debug = Debug("par_test")
 
 type weather struct {
 	city  string
 	value string
 }
 
-func FindWeather(city string, results chan weather) merge.RequestFunc {
+func FindWeather(city string, results chan weather) par.RequestFunc {
 	_city := city
 	return func(ctx context.Context) error {
 		request, _ := http.NewRequest("GET", "http://api.openweathermap.org/data/2.5/weather?q="+_city, nil)
-		return merge.Do(ctx, request, func(response *http.Response, err error) error {
+		return par.Do(ctx, request, func(response *http.Response, err error) error {
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func TestMerger(t *testing.T) {
 		"San Jose",
 	}
 
-	requests := make(chan merge.RequestFunc, len(cities))
+	requests := make(chan par.RequestFunc, len(cities))
 	results := make(chan weather, len(cities)*redundancy) // buffer for clarity of example
 	for _, city := range cities {
 		requests <- FindWeather(city, results)
@@ -59,11 +59,11 @@ func TestMerger(t *testing.T) {
 	// When
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	merger := merge.
+	parr := par.
 		Requests(requests).
 		WithRedundancy(redundancy).
 		WithConcurrency(3)
-	err := merger.MergeWithContext(ctx)
+	err := parr.MergeWithContext(ctx)
 
 	// Then - I expect success
 	if err != nil {

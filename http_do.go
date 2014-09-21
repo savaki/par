@@ -1,4 +1,4 @@
-package merge
+package par
 
 import (
 	"code.google.com/p/go.net/context"

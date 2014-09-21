@@ -2,7 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go.net/context"
-	"github.com/savaki/merge"
+	"github.com/savaki/par"
 	"github.com/savaki/openweathermap"
 	"log"
 	"time"
@@ -14,7 +14,7 @@ func ok(err error) {
 	}
 }
 
-func find(city string, responses chan *openweathermap.Forecast) merge.RequestFunc {
+func find(city string, responses chan *openweathermap.Forecast) par.RequestFunc {
 	return func(ctx context.Context) error {
 		forecast, err := openweathermap.New().ByCityName(city)
 		ok(err)
@@ -30,7 +30,7 @@ func main() {
 
 	// create our channel of requests
 
-	requests := make(chan merge.RequestFunc, 3)
+	requests := make(chan par.RequestFunc, 3)
 	requests <- find("San Francisco", forecasts)
 	requests <- find("Oakland", forecasts)
 	requests <- find("Berkeley", forecasts)
@@ -38,7 +38,7 @@ func main() {
 
 	// execute the requests with a concurrency of 1
 
-	resolver := merge.Requests(requests).WithRedundancy(2)
+	resolver := par.Requests(requests).WithRedundancy(2)
 	ctx, cancel := context.WithTimeout(context.Background(), 450*time.Millisecond)
 	err := resolver.MergeWithContext(ctx)
 	cancel()
