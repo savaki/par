@@ -56,7 +56,10 @@ func TestMerger(t *testing.T) {
 	close(requests)
 
 	// When
-	merger := merge.Requests(requests).WithRedundancy(redundancy)
+	merger := merge.
+		Requests(requests).
+		WithRedundancy(redundancy).
+		WithConcurrent(3)
 	err := merger.Merge()
 
 	// Then - I expect success
