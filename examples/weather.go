@@ -40,7 +40,7 @@ func main() {
 
 	resolver := par.Requests(requests).WithRedundancy(2)
 	ctx, cancel := context.WithTimeout(context.Background(), 450*time.Millisecond)
-	err := resolver.MergeWithContext(ctx)
+	err := resolver.DoWithContext(ctx)
 	cancel()
 	ok(err)
 

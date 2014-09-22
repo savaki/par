@@ -43,7 +43,7 @@ func simple() {
   close(requests)
 
   // 3. execute the flips in parallel
-  _ = par.Requests(requests).Merge()
+  _ = par.Requests(requests).Do()
 
   // 4. results channel now has your results and can be ranged over
 }
@@ -95,7 +95,7 @@ func main() {
 	// execute the requests with a concurrency of 1
 
 	resolver := par.Requests(requests).WithConcurrency(1)
-	err := resolver.Merge()
+	err := resolver.Do()
 	ok(err)
 
 	// the forecasts channel now contains all our forecasts
@@ -133,7 +133,7 @@ As we've stated before, this can be slow for the end user.  So now, we've talked
 
 ```
 	resolver := par.Requests(requests).WithConcurrency(3)
-	err := resolver.Merge()
+	err := resolver.Do()
 	ok(err)
 ```
 
@@ -156,13 +156,13 @@ Looking at our results we can see what calls 0, 1, 2 go through immediately sinc
 
 ## Example - Find the weather in 3 cities with a concurrency of 2 and timeout of 250ms
 
-Now let's suppose we can't afford 3 concurrent calls with this service provide and we need to drop down to two.  We still want to provide a responsive service to our users, so let's set an upper bound on how long the call can take via ```.MergeWithContext(ctx)```  the excellent [context](http://blog.golang.org/context) library is courtesy of Google.
+Now let's suppose we can't afford 3 concurrent calls with this service provide and we need to drop down to two.  We still want to provide a responsive service to our users, so let's set an upper bound on how long the call can take via ```.DoWithContext(ctx)```  the excellent [context](http://blog.golang.org/context) library is courtesy of Google.
 
 ```
 	resolver := par.Requests(requests).WithConcurrency(2)
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
-	err := resolver.MergeWithContext(ctx)
+	err := resolver.DoWithContext(ctx)
 ```
 
 ### Result
@@ -192,7 +192,7 @@ Here's the core element of code.
 	resolver := par.Requests(requests).WithRedundancy(2)
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
-	err := resolver.MergeWithContext(ctx)
+	err := resolver.DoWithContext(ctx)
 ```
 
 ### Result

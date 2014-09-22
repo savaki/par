@@ -11,37 +11,37 @@ var debug = Debug("par")
 
 type RequestFunc func(ctx context.Context) error
 
-type Merger interface {
-	WithRedundancy(redundancy int) Merger
-	WithConcurrency(concurrency int) Merger
-	Merge() error
-	MergeWithContext(ctx context.Context) error
+type Par interface {
+	WithRedundancy(redundancy int) Par
+	WithConcurrency(concurrency int) Par
+	Do() error
+	DoWithContext(ctx context.Context) error
 }
 
-type parr struct {
+type parallel struct {
 	requests    chan RequestFunc
 	redundancy  int
 	concurrency int
 }
 
-func Requests(requests chan RequestFunc) Merger {
-	return &parr{
+func Requests(requests chan RequestFunc) Par {
+	return &parallel{
 		requests:    requests,
 		redundancy:  1,
 		concurrency: 0,
 	}
 }
 
-func (m *parr) WithRedundancy(redundancy int) Merger {
-	return &parr{
+func (m *parallel) WithRedundancy(redundancy int) Par {
+	return &parallel{
 		requests:    m.requests,
 		redundancy:  redundancy,
 		concurrency: m.concurrency,
 	}
 }
 
-func (m *parr) WithConcurrency(concurrency int) Merger {
-	return &parr{
+func (m *parallel) WithConcurrency(concurrency int) Par {
+	return &parallel{
 		requests:    m.requests,
 		redundancy:  m.redundancy,
 		concurrency: concurrency,
@@ -53,7 +53,7 @@ type response struct {
 	err error
 }
 
-func (m parr) enqueue(ctx context.Context, responses chan *response, done chan interface{}) int {
+func (m parallel) enqueue(ctx context.Context, responses chan *response, done chan interface{}) int {
 	// helper method to execute request and toss response into responses channel
 	handle := func(id int, request RequestFunc, pool <-chan interface{}) {
 		defer func() { <-pool }()
@@ -94,14 +94,14 @@ func (m parr) enqueue(ctx context.Context, responses chan *response, done chan i
 	return len(requests)
 }
 
-func (m parr) Merge() error {
+func (m parallel) Do() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	return m.MergeWithContext(ctx)
+	return m.DoWithContext(ctx)
 }
 
-func (m parr) MergeWithContext(ctx context.Context) error {
+func (m parallel) DoWithContext(ctx context.Context) error {
 	// internal communication channel
 	responses := make(chan *response)
 

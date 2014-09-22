@@ -38,7 +38,7 @@ func FindWeather(city string, results chan weather) par.RequestFunc {
 	}
 }
 
-func TestMerger(t *testing.T) {
+func TestPar(t *testing.T) {
 	// Given a channel of requests
 	redundancy := 2
 	cities := []string{
@@ -59,11 +59,11 @@ func TestMerger(t *testing.T) {
 	// When
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	parr := par.
+	parallel := par.
 		Requests(requests).
 		WithRedundancy(redundancy).
 		WithConcurrency(3)
-	err := parr.MergeWithContext(ctx)
+	err := parallel.DoWithContext(ctx)
 
 	// Then - I expect success
 	if err != nil {
