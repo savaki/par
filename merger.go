@@ -84,6 +84,8 @@ func (m parallel) enqueue(ctx context.Context, responses chan *response, done ch
 				select {
 				case pool <- true:
 					go handle(id, request, (<-chan interface{})(pool))
+				case <-ctx.Done():
+					return
 				case <-done:
 					return
 				}
@@ -115,13 +117,14 @@ func (m parallel) DoWithContext(ctx context.Context) error {
 
 	// collect the results and return when finished
 	results := map[int]int{}
-	for expected != len(results) {
+	for len(results) != expected {
 		select {
 		case response := <-responses:
 			if response.err == nil {
 				results[response.id] = response.id
 				debug(fmt.Sprintf("received - %d", response.id))
 			}
+
 		case <-ctx.Done():
 			debug("timeout")
 			return errors.New("must have timed out")
